@@ -1,7 +1,8 @@
-# DOCKER-VERSION 1.1.0
+# DOCKER-VERSION 1.7.0
 
 FROM base/archlinux
 
+RUN pacman-key --init; pacman-key --populate archlinux; pacman-key --refresh-keys
 RUN pacman -Syu --noprogressbar --noconfirm nginx
 
 ADD ./nginx.conf /etc/nginx/nginx.conf
