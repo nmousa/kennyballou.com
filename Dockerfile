@@ -1,9 +1,10 @@
 # DOCKER-VERSION 1.7.0
 
-FROM base/archlinux
+FROM alpine:3.3
+MAINTAINER kballou@devnulllabs.io
 
-RUN pacman-key --init; pacman-key --populate archlinux; pacman-key --refresh-keys
-RUN pacman -Syu --noprogressbar --noconfirm nginx
+RUN apk update && apk add \
+    nginx
 
 ADD ./nginx.conf /etc/nginx/nginx.conf
 
