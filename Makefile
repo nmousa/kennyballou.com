@@ -1,6 +1,6 @@
 TAG=kennyballou
 all: build
-.PHONY: all
+.PHONY: all build container blog
 
 build: container blog
 
