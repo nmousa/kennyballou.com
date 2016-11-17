@@ -53,8 +53,9 @@ process to resume. The `:code.load_file/1` function, unfortunately named, takes
 a single argument: the _module_ to load into memory. Finally, the
 `:sys.change_code` function takes four parameters: "name", module, old version,
 and "extra". The "name" is the PID or the registered name of the process. The
-"extra" argument is reserved parameter for each process, it's the same "extra"
-that will be passed to the restarted process's `code_change/3` function.
+"extra" argument is a reserved parameter for each process, it's the same
+"extra" that will be passed to the restarted process's `code_change/3`
+function.
 
 ### Example ###
 
@@ -141,9 +142,73 @@ Now, let's say we wish to add some logging to the handling of the `:get` and
          {:reply, :ok, Map.put(state, key, value)}
        end
 
-Without closing the current `iex` session, apply the patch to the file:
+Without closing the current `iex` session, apply the patch to the file and
+compile the module:
 
     % patch kv.ex kv.ex.patch
+    % elixir kv.ex
+
+You may see a warning about redefining an existing module, this warning can be
+safely ignored.
+
+Now, in the still open `iex` session, let's being the black magic incantations:
+
+    iex> :sys.suspend(KV)
+    :ok
+    iex> :sys.load_file KV
+    {:module, KV}
+    iex> :sys.change_code(KV, KV, 0, nil)
+    :ok
+    iex> :sys.resume(KV)
+    :ok
+
+Now, we should be able to test it again:
+
+    iex> KV.get(:a)
+    21:28:47.989 [info]  Elixir.KV: Handling get request for a
+    42
+    iex> KV.put(:b, 2)
+    21:28:53.729 [info]  Elixir.KV: Handling put request for b:2
+    :ok
+
+Thus, we are able to hot-swap running code, without stopping, losing state, or
+effecting processes waiting for that data.
+
+But there are better ways to achieve this same result.
+
+### Example: `iex` ###
+
+There are several functions available to us when using `iex` that essentially
+perform the above actions for us:
+
+*   `c/1`: compile file
+
+*   `r/1`: (recompile and) reload module
+
+The `r/1` helper takes an atom of the module to reload, `c/1` takes a binary of
+the path to the module to compile. Check the [documentation][30] for more
+information.
+
+Therefore, using these, we can simplify what we did in the previous example to
+simply a call to `r/1`:
+
+    iex> r KV
+    warning: redefining module KV (current version loaded from Elixir.KV.beam)
+      kv.ex:1
+
+    {:reloaded, KV, [KV]}
+    iex> KV.get(:a)
+
+    21:52:47.829 [info]  Elixir.KV: Handling get request for a
+    42
+
+In one function, we have done what we did in 4. However, the story does not end
+here. Although `c/1` and `r/1` are great for development. There are *not*
+recommended for production use. Do not depend on them to perform deployments.
+
+Therefore, we will need more tools for deployements.
+
+## Relups ##
 
 [1]: http://erlang.org/doc/reference_manual/code_loading.html
 
@@ -172,3 +237,5 @@ Without closing the current `iex` session, apply the patch to the file:
 [13]: https://docker.com
 
 [14]: http://kubernetes.io/
+
+[15]: http://elixir-lang.org/docs/stable/iex/IEx.Helpers.html
