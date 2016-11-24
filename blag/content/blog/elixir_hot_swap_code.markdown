@@ -210,6 +210,20 @@ Therefore, we will need more tools for deployements.
 
 ## Relups ##
 
+Thankfully, there is another set of tooling that allows us to more easily
+deploy releases, and more topically, upgrades: Relups. Before we dive straight
+into relups, let's discuss a few other related files.
+
+### Erlang Applications ###
+
+As part of Erlang "Applications", there is a related file, the [`.app`][16]
+file. This resource files describes the application: other applications that
+should be started and other metadata about the application.
+
+### Erlang Releases ###
+
+
+
 [1]: http://erlang.org/doc/reference_manual/code_loading.html
 
 [2]: https://github.com/bitwalker/exrm
@@ -239,3 +253,5 @@ Therefore, we will need more tools for deployements.
 [14]: http://kubernetes.io/
 
 [15]: http://elixir-lang.org/docs/stable/iex/IEx.Helpers.html
+
+[16]: http://erlang.org/doc/man/app.html
