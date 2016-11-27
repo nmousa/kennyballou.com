@@ -210,19 +210,155 @@ Therefore, we will need more tools for deployements.
 
 ## Relups ##
 
-Thankfully, there is another set of tooling that allows us to more easily
-deploy releases, and more topically, upgrades: Relups. Before we dive straight
-into relups, let's discuss a few other related files.
+Fortunately, there is another set of tooling that allows us to more easily
+deploy releases, and more topically, perform upgrades: Relups. Before we dive
+straight into relups, let's discuss a few other related concepts.
 
 ### Erlang Applications ###
 
 As part of Erlang "Applications", there is a related file, the [`.app`][16]
-file. This resource files describes the application: other applications that
+file. This resource file describes the application: other applications that
 should be started and other metadata about the application.
+
+Here's an example `.app` file from the [octochat][17] demo application:
+
+    {application,octochat,
+             [{registered,[]},
+              {description,"Demo Application for How Swapping Code"},
+              {vsn,"0.3.3"},
+              {modules,['Elixir.Octochat','Elixir.Octochat.Acceptor',
+                        'Elixir.Octochat.Application','Elixir.Octochat.Echo',
+                        'Elixir.Octochat.ServerSupervisor',
+                        'Elixir.Octochat.Supervisor']},
+              {applications,[kernel,stdlib,elixir,logger]},
+              {mod,{'Elixir.Octochat.Application',[]}}]}.
+
+This is a pretty good sized "Erlang" triple. It tells it is an `application`,
+the application's name is `octochat`, and everything in the list that follows
+is a keyword list that describes the `octochat` application.
 
 ### Erlang Releases ###
 
+Erlang "releases", similar to Erlang applications, are an entire system: the
+Erlang VM, the dependent set of applications, and arguments for the Erlang VM.
 
+After building a release for the Octochat application with the
+[`distillery`][4] project, we get a `.rel` file similar to the following:
+
+    {release,{"octochat","0.3.3"},
+         {erts,"8.1"},
+         [{logger,"1.3.4"},
+          {compiler,"7.0.2"},
+          {elixir,"1.3.4"},
+          {stdlib,"3.1"},
+          {kernel,"5.1"},
+          {octochat,"0.3.3"},
+          {iex,"1.3.4"},
+          {sasl,"3.0.1"}]}.
+
+This is an Erlang 4-tuple; it's a "release" of the "0.0.3" version of
+"octochat". It will use the "8.1" version of "erts" and it depends on the list
+of applications (and their versions) provided in the last element of the tuple.
+
+### Appups and Relups ###
+
+As the naming might suggest, "appups" and "relups" are the "upgrade" versions
+for applications and releases, respectively. Appups describe how to take a
+single application and upgrade its modules, specifically, it will have
+instructions for upgrading modules that require "extras", or, if we are
+upgrading supervisors, for example, it will have the correct instructions for
+adding and removing child processes.
+
+Let's examine some examples of these files as well. Here is an appup for
+octochat generated using [distillery][4]:
+
+    {"0.2.1",
+     [{"0.2.0",[{load_module,'Elixir.Octochat.Echo',[]}]}],
+     [{"0.2.0",[{load_module,'Elixir.Octochat.Echo',[]}]}]}.
+
+This triple tells us how to take the octochat application from the "0.2.0"
+version to the "0.2.1" version, specifically what module needs to be updated to
+make the application upgrade a success. Notice, this is only one module, to
+upgrade the application, we do not need to update _every_ module, only the
+module with _actual_ changes. The last element of the tuple instructs how to
+"downgrade" from "0.2.1" to "0.2.0". The instructions make sense here, since it
+is similarly, only a change in the single module.
+
+Now, let's look at the related "relup" file for this release:
+
+    {"0.2.1",
+     [{"0.2.0",[],
+       [{load_object_code,{octochat,"0.2.1",['Elixir.Octochat.Echo']}},
+        point_of_no_return,
+        {load,{'Elixir.Octochat.Echo',brutal_purge,brutal_purge}}]}],
+     [{"0.2.0",[],
+       [{load_object_code,{octochat,"0.2.0",['Elixir.Octochat.Echo']}},
+        point_of_no_return,
+        {load,{'Elixir.Octochat.Echo',brutal_purge,brutal_purge}}]}]}.
+
+Notice, this is a triple as well. This triple tells more of the story of how to
+deploy the upgrade from 0.2.0 to 0.2.1. Let's break down just the upgrade
+instructions for now:
+
+
+    [{load_object_code,{octochat,"0.2.1",['Elixir.Octochat.Echo']}},
+     point_of_no_return,
+     {load,{'Elixir.Octochat.Echo',brutal_purge,brutal_purge}}]
+
+The first instruction tells the VM to load into memory the new version of the
+"Octochat.Echo" module, specifically the one associated with version "0.2.1".
+But do not start or replace anything yet. Next, it tells the VM, that failure
+beyond this point is fatal, if the upgrade fails from this point on, backing
+out will require manual intervention(?). The final step is to replace the
+running version of the module and use the newly loaded version. For more
+information regarding `burtal_purge`, check out the "PrePurge" and "PostPurge"
+values in the [appup documentation][18].
+
+Similar to the appup file, the third element in the triple describes to the
+Erlang VM how to downgrade the release as well. The version numbers in this
+case make this a bit more obvious as well, however, the steps are essentially
+the same.
+
+### Generating Releases and Upgrades with Elixir ###
+
+Now that we have some basic understanding of releases and upgrades, let's see
+how we can generate them with Elixir. For the first version, we will generate
+the releases with the [distillery][4] project.
+
+> This has been written for the `0.10.1` version of [distillery][4]. This is a
+> fast moving project that is in beta, be prepared to update as necessary.
+
+Add the application to your `deps` list:
+
+    {:distillery, "~> 0.10"}
+
+Perform the requisite dependency download:
+
+    ± mix deps.get
+
+Then, to build your first release, you can use the following:
+
+    ± MIX_ENV=prod mix release --env prod
+
+> For more information on why you must specify both environments, please read
+> the [FAQ][19] of distillery. If the environments match, there's a small
+> modification to the `./rel/config.exs` that can be made so that specifying
+> both is no longer necessary.
+
+After this process is complete, there should be a new folder under the `./rel`
+folder that contains the new release of the project. Within this directory,
+there will be several directories, namely, `bin`, `erts-8.1`, `lib`, and
+`releases`. The `bin` directory will contain the top level Erlang entry
+scripts, the `erts-{version}` folder will contain the requisite files for the
+Erlang runtime, the `lib` folder will contain the compiled beam files for the
+required applications for the release, and finally, the `releases` folder will
+contain the versions of the releases. Each folder for each version will have
+its own `rel` file, generated boot scripts, as per
+the [OTP releases guide][20], and a tarball of the release for deployment.
+
+Next, we can generate an upgrade for the release using the following command:
+
+    ± MIX_ENV=prod mix release --upgrade
 
 [1]: http://erlang.org/doc/reference_manual/code_loading.html
 
@@ -255,3 +391,11 @@ should be started and other metadata about the application.
 [15]: http://elixir-lang.org/docs/stable/iex/IEx.Helpers.html
 
 [16]: http://erlang.org/doc/man/app.html
+
+[17]: https://git.devnulllabs.io/demos/octochat.git
+
+[18]: http://erlang.org/doc/man/appup.html
+
+[19]: https://hexdocs.pm/distillery/common-issues.html#why-do-i-have-to-set-both-mix_env-and-env
+
+[20]: http://erlang.org/doc/design_principles/release_structure.html
