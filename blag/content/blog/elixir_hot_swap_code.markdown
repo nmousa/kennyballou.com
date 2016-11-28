@@ -22,6 +22,11 @@ runtime is itself, essentially, a virtual machine with its own OS and process
 scheduling, it has the ability to start and stop, load and unload, processes
 and code similar to how "real" operating systems do.
 
+>1. I like that you start by really positive, and it seems pretty noble to do so.
+However, I am thinking if you should start negative by describing how annoying
+it would be to not have runtime loading?
+2. Write out operating system?
+
 This enables some spectacular power in terms of creating deployments and
 rolling out those deployments. That is, if we can provide a particular artifact
 for the runtime to load and replace the running system with, we can instruct it
@@ -152,6 +157,7 @@ You may see a warning about redefining an existing module, this warning can be
 safely ignored.
 
 Now, in the still open `iex` session, let's being the black magic incantations:
+> Do you mean "bring"?
 
     iex> :sys.suspend(KV)
     :ok
@@ -173,8 +179,10 @@ Now, we should be able to test it again:
 
 Thus, we are able to hot-swap running code, without stopping, losing state, or
 effecting processes waiting for that data.
+> I like this summary line
 
 But there are better ways to achieve this same result.
+> Yay! I am now expecting to learn how.
 
 ### Example: `iex` ###
 
@@ -205,6 +213,7 @@ simply a call to `r/1`:
 In one function, we have done what we did in 4. However, the story does not end
 here. Although `c/1` and `r/1` are great for development. There are *not*
 recommended for production use. Do not depend on them to perform deployments.
+> So the issue _is_ performance? 
 
 Therefore, we will need more tools for deployements.
 
@@ -283,6 +292,7 @@ upgrade the application, we do not need to update _every_ module, only the
 module with _actual_ changes. The last element of the tuple instructs how to
 "downgrade" from "0.2.1" to "0.2.0". The instructions make sense here, since it
 is similarly, only a change in the single module.
+> Actually, it does not make sense. I don't understand what is going on here.
 
 Now, let's look at the related "relup" file for this release:
 
@@ -318,6 +328,8 @@ Similar to the appup file, the third element in the triple describes to the
 Erlang VM how to downgrade the release as well. The version numbers in this
 case make this a bit more obvious as well, however, the steps are essentially
 the same.
+> Whenver you refer to section in code maybe add in parentheses what I should
+be looking at? For example, "the third element (point_of_no_return)"
 
 ### Generating Releases and Upgrades with Elixir ###
 
